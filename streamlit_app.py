@@ -1,38 +1,56 @@
-from collections import namedtuple
-import altair as alt
-import math
-import pandas as pd
 import streamlit as st
+from serpapi import GoogleSearch
+from bs4 import BeautifulSoup
+import requests
+import openai
+import textwrap
 
-"""
-# Welcome to Streamlit!
+st.title("Streamlit App for SERP Scraping and Content Summarization")
 
-Edit `/streamlit_app.py` to customize this app to your heart's desire :heart:
+serp_api_key = st.text_input("Enter your SERPapi Key:", type="password")
+openai_api_key = st.text_input("Enter your OpenAI API Key:", type="password")
 
-If you have any questions, checkout our [documentation](https://docs.streamlit.io) and [community
-forums](https://discuss.streamlit.io).
+query = st.text_input("Enter your search query:")
 
-In the meantime, below is an example of what you can do with just a few lines of code:
-"""
+if st.button("Proceed") and query and serp_api_key and openai_api_key:
+    # Search Google with SERPapi
+    params = {
+        "engine": "google",
+        "q": query,
+        "num": 5,
+        "api_key": serp_api_key,
+    }
+    search = GoogleSearch(params)
+    results = search.get_dict().get("organic_results", [])[:5]
 
+    urls_content = []
 
-with st.echo(code_location='below'):
-    total_points = st.slider("Number of points in spiral", 1, 5000, 2000)
-    num_turns = st.slider("Number of turns in spiral", 1, 100, 9)
+    # Scrape the URLs using BeautifulSoup
+    for result in results:
+        url = result['link']
+        response = requests.get(url)
+        soup = BeautifulSoup(response.content, 'html.parser')
+        text = soup.get_text()
+        urls_content.append(text)
 
-    Point = namedtuple('Point', 'x y')
-    data = []
+    # Chunk the URL Content into Tokens and Summarize
+    openai.api_key = openai_api_key
 
-    points_per_turn = total_points / num_turns
+    summaries = []
 
-    for curr_point_num in range(total_points):
-        curr_turn, i = divmod(curr_point_num, points_per_turn)
-        angle = (curr_turn + 1) * 2 * math.pi * i / points_per_turn
-        radius = curr_point_num / total_points
-        x = radius * math.cos(angle)
-        y = radius * math.sin(angle)
-        data.append(Point(x, y))
+    for content in urls_content:
+        chunks = textwrap.wrap(content, 3000) # Splitting the content into 3000 character chunks
 
-    st.altair_chart(alt.Chart(pd.DataFrame(data), height=500, width=500)
-        .mark_circle(color='#0068c9', opacity=0.5)
-        .encode(x='x:Q', y='y:Q'))
+        for chunk in chunks:
+            # Customize the summarization model call according to your requirements
+            response = openai.Completion.create(
+                engine="text-davinci-003",
+                prompt="Summarize the following text: " + chunk,
+                max_tokens=150
+            )
+            summary = response.choices[0].text
+            summaries.append(summary)
+
+    # Display the summaries
+    for summary in summaries:
+        st.write(summary)
