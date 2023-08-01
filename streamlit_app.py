@@ -9,7 +9,9 @@ from serpapi import GoogleSearch
 import time
 
 def fetch_results(api_key, keyword, debug=False, location="Paris, Paris, Ile-de-France, France"):
-    if debug: st.write("Fetching results...")
+    """Fetch Google search results for a given keyword"""
+    if debug:
+        st.write("Fetching results...")
     params = {
         "api_key": api_key,
         "engine": "google",
@@ -21,17 +23,21 @@ def fetch_results(api_key, keyword, debug=False, location="Paris, Paris, Ile-de-
     }
     search = GoogleSearch(params)
     results = search.get_dict()
-    time.sleep(4)
+    time.sleep(4)  # Consider async or better timing strategies if possible
     urls = [item['link'] for item in results['organic_results'][:5]]
-    if debug: st.write("Fetched URLs:", urls)
+    if debug:
+        st.write("Fetched URLs:", urls)
     return urls
 
 def get_text_from_url(url, debug=False):
+    """Retrieve the full text content from a URL"""
     response = requests.get(url)
+    response.raise_for_status()  # Raise an error for failed requests
     soup = BeautifulSoup(response.text, 'html.parser')
     return soup.get_text()
 
 def summarize_text(urls, openai_api_key, debug=False):
+    """Summarize the text from a list of URLs using LangChain"""
     llm = OpenAI(openai_api_key=openai_api_key, temperature=0)
     chain = load_summarize_chain(llm, chain_type="stuff")
     summaries = []
@@ -45,6 +51,7 @@ def summarize_text(urls, openai_api_key, debug=False):
     return summaries
 
 def custom_summary(summaries, keyword):
+    """Combine summaries into a custom summary"""
     full_text = ' '.join([summary for _, summary in summaries])
     custom_prompt = f"En gardant toutes les informations sur {keyword} résume ce texte: {full_text}"
     prompt_template = PromptTemplate(template=custom_prompt)
@@ -53,18 +60,22 @@ def custom_summary(summaries, keyword):
     return response
 
 def main():
+    """Main function to run the Streamlit app"""
     st.title("Google Top 5 URLs Scraper & Summarizer")
     api_key = st.text_input("SERPapi Key")
     keyword = st.text_input("Keyword")
-    openai_api_key = st.text_input("OpenAI API Key")
+    openai_api_key = st.text_input("OpenAI API Key", type="password")  # Hide API key input
     debug_mode = st.checkbox("Debug Mode")
 
     if st.button("Send") and api_key and keyword and openai_api_key:
-        urls = fetch_results(api_key, keyword, debug=debug_mode)
-        st.write("Top 5 URLs:")
-        summaries = summarize_text(urls, openai_api_key, debug=debug_mode)
-        final_summary = custom_summary(summaries, keyword)
-        st.write(f"Final Summary: {final_summary}")
+        try:
+            urls = fetch_results(api_key, keyword, debug=debug_mode)
+            st.write("Top 5 URLs:")
+            summaries = summarize_text(urls, openai_api_key, debug=debug_mode)
+            final_summary = custom_summary(summaries, keyword)
+            st.write(f"Final Summary: {final_summary}")
+        except Exception as e:
+            st.error(f"An error occurred: {str(e)}")  # Proper error handling
 
 if __name__ == "__main__":
     main()
