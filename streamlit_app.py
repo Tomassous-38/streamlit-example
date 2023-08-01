@@ -12,7 +12,7 @@ def fetch_results(api_key, keyword, engine="google", location="Paris, Ile-de-Fra
         "google_domain": "google.fr",
         "location": location,
     }
-    
+
     search = GoogleSearch(params)
     results = search.get_dict()
     urls = [item['link'] for item in results['organic_results'][:5]]
@@ -21,11 +21,17 @@ def fetch_results(api_key, keyword, engine="google", location="Paris, Ile-de-Fra
     for url in urls:
         try:
             response = requests.get(url)
-            soup = BeautifulSoup(response.text, 'html.parser')
-            content = soup.get_text()
-            contents.append(content)
-        except:
-            contents.append("Failed to fetch content.")
+            if response.status_code == 403:
+                contents.append("403 Forbidden: Access denied.")
+            else:
+                soup = BeautifulSoup(response.text, 'html.parser')
+                content = soup.get_text()
+                if content:
+                    contents.append(content)
+                else:
+                    contents.append("Failed to fetch content.")
+        except Exception as e:
+            contents.append(f"An error occurred: {str(e)}")
 
     return urls, contents
 
