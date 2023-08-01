@@ -2,7 +2,7 @@ import streamlit as st
 import requests
 from langchain.text_splitter import TokenTextSplitter
 from langchain.chains.summarize import load_summarize_chain
-from langchain import OpenAI
+from langchain import PromptTemplate, LLMChain, OpenAI
 from bs4 import BeautifulSoup
 
 def fetch_results(api_key, keyword, location="Paris, Ile-de-France, France"):
@@ -13,10 +13,17 @@ def fetch_results(api_key, keyword, location="Paris, Ile-de-France, France"):
         "gl": "fr",  # Country France
         "google_domain": "google.fr",
         "location": location,
+        "engine": "google"  # Required, set to "google" to use the Google API engine
     }
+
     response = requests.get("https://serpapi.com/search", params)
     results = response.json()
-    return [item['link'] for item in results.get('organic_results', [])[:5]]
+    if 'organic_results' in results:
+        urls = [item['link'] for item in results['organic_results'][:5]]
+    else:
+        print("No results found.")
+        urls = []
+    return urls
 
 def get_text_from_url(url):
     response = requests.get(url)
@@ -28,7 +35,14 @@ def summarize_text(urls, openai_api_key):
     llm = OpenAI(openai_api_key=openai_api_key, temperature=0.8)
     chain_summarize = load_summarize_chain(llm, chain_type="map_reduce")
 
-    return [(url, chain_summarize.run(text_splitter.split_text(get_text_from_url(url)))) for url in urls]
+    summaries = []
+    for url in urls:
+        text = get_text_from_url(url)
+        splitted_texts = text_splitter.split_text(text)
+        summarized_text = chain_summarize.run(splitted_texts)
+        summaries.append((url, summarized_text))
+
+    return summaries
 
 def main():
     st.title("Google Top 5 URLs Scraper & Summarizer")
@@ -36,8 +50,8 @@ def main():
     keyword = st.text_input("Keyword")
     openai_api_key = st.text_input("OpenAI API Key")
 
-    if st.button('Send'):
-        if all([api_key, keyword, openai_api_key]):
+    if st.button("Fetch & Summarize"):
+        if api_key and keyword and openai_api_key:
             urls = fetch_results(api_key, keyword)
             if urls:
                 st.write("Top 5 URLs:")
@@ -46,9 +60,11 @@ def main():
                     st.write(f"URL: {url}")
                     st.write(f"Summary: {summary}")
             else:
-                st.write("No results found. Please check the parameters.")
-                if st.button('Retry'):
-                    st.experimental_rerun()
+                st.error("No results found. Please check the parameters.")
+        else:
+            st.error("Please provide all required information.")
+
+    st.button("Retry")
 
 if __name__ == "__main__":
     main()
