@@ -4,7 +4,7 @@ from langchain.chains.summarize import load_summarize_chain
 from langchain import PromptTemplate, LLMChain, OpenAI
 from bs4 import BeautifulSoup
 import requests
-from google_search_results import GoogleSearch
+from serpapi import GoogleSearch
 
 def fetch_results(api_key, keyword, location="Paris, Ile-de-France, France"):
     params = {
