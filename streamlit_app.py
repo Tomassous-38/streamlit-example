@@ -1,6 +1,6 @@
 import streamlit as st
 from bs4 import BeautifulSoup
-from google-search-results import GoogleSearch
+from serpapi import GoogleSearch
 from langchain.text_splitter import TokenTextSplitter
 from langchain.chains.summarize import load_summarize_chain
 from langchain import PromptTemplate, LLMChain, OpenAI
