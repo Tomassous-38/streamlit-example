@@ -7,6 +7,7 @@ import requests
 from bs4 import BeautifulSoup
 from serpapi import GoogleSearch
 import time
+from langchain.chains.summarize import load_summarize_chain
 
 def fetch_results(api_key, keyword, debug=False, location="Paris, Paris, Ile-de-France, France"):
     if debug: st.write("Fetching results...")
@@ -36,8 +37,8 @@ def get_text_from_url(url, debug=False):
         return None
 
 def summarize_text(urls, openai_api_key, debug=False):
-    llm = OpenAI(openai_api_key=openai_api_key, temperature=0)
-    chain = MapReduceChain(llm)
+    llm = OpenAI(temperature=0)
+    chain = load_summarize_chain(llm, chain_type="map_reduce")
     summaries = []
     for url in urls:
         text = get_text_from_url(url, debug=debug)
