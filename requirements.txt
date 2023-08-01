@@ -6,3 +6,4 @@ tiktoken
 serpapi
 time
 openai
+google-search-results
