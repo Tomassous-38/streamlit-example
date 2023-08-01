@@ -1,56 +1,76 @@
-import streamlit as st
-from serpapi import GoogleSearch
-from bs4 import BeautifulSoup
+import streamlit as st 
 import requests
-import openai
-import textwrap
+from bs4 import BeautifulSoup
+import re
 
-st.title("Streamlit App for SERP Scraping and Content Summarization")
+from langchain.text_splitter import TokenTextSplitter
+from langchain.chains.summarize import load_summarize_chain
+from langchain import PromptTemplate, LLMChain, OpenAI
 
-serp_api_key = st.text_input("Enter your SERPapi Key:", type="password")
-openai_api_key = st.text_input("Enter your OpenAI API Key:", type="password")
-
-query = st.text_input("Enter your search query:")
-
-if st.button("Proceed") and query and serp_api_key and openai_api_key:
-    # Search Google with SERPapi
+def get_latest_results(query, api_key):
     params = {
-        "engine": "google",
         "q": query,
-        "num": 5,
-        "api_key": serp_api_key,
+        "location": "United States",
+        "hl": "en",
+        "gl": "us",
+        "google_domain": "google.com",
+        "tbs": "qdr:d",
+        "api_key": api_key,
     }
-    search = GoogleSearch(params)
-    results = search.get_dict().get("organic_results", [])[:5]
 
-    urls_content = []
+    response = requests.get("https://serpapi.com/search", params)
+    results = response.json()
 
-    # Scrape the URLs using BeautifulSoup
-    for result in results:
-        url = result['link']
-        response = requests.get(url)
-        soup = BeautifulSoup(response.content, 'html.parser')
-        text = soup.get_text()
-        urls_content.append(text)
+    urls = [r["link"] for r in results["organic_results"]][:5] # Limit to first 5 results
 
-    # Chunk the URL Content into Tokens and Summarize
-    openai.api_key = openai_api_key
+    return urls
 
-    summaries = []
+def scrape_and_chunk_urls(urls):
+    text_splitter = TokenTextSplitter(chunk_size=3000, chunk_overlap=200)
+    chunks = []
 
-    for content in urls_content:
-        chunks = textwrap.wrap(content, 3000) # Splitting the content into 3000 character chunks
+    for url in urls:
+        try:
+            response = requests.get(url)
+            soup = BeautifulSoup(response.text, 'html.parser')
+            text = ' '.join([re.sub(r'\s+', ' ', p.get_text()) for p in soup.find_all('p')])
 
-        for chunk in chunks:
-            # Customize the summarization model call according to your requirements
-            response = openai.Completion.create(
-                engine="text-davinci-003",
-                prompt="Summarize the following text: " + chunk,
-                max_tokens=150
-            )
-            summary = response.choices[0].text
-            summaries.append(summary)
+            chunks += text_splitter.split_text(text)
+        except:
+            print(f"Failed to download and parse article: {url}")
 
-    # Display the summaries
-    for summary in summaries:
-        st.write(summary)
+    return chunks
+
+def summarize_text(to_summarize_texts, openai_api_key):
+    summarized_texts = []
+
+    llm = OpenAI(openai_api_key=openai_api_key, temperature=0.8)
+    chain_summarize = load_summarize_chain(llm, chain_type="map_reduce")
+    
+    for text in to_summarize_texts:
+        # Summarize chunks here
+        summarized_text = chain_summarize.run(text)
+
+        summarized_texts.append(summarized_text)
+
+    return summarized_texts
+
+def main():
+    st.title('Content Summarizer')
+    st.markdown("## Please input your API keys")
+
+    serpapi_key = st.text_input("Insert your SerpAPI key here: ", type="password")
+    openai_api_key = st.text_input("Insert your OpenAI api key: ", type="password")
+    user_query = st.text_input("Make me a summary about: ")
+
+    if st.button('Submit'):
+        urls = get_latest_results(user_query, serpapi_key)
+        chunks = scrape_and_chunk_urls(urls)
+        summarized_texts = summarize_text(chunks, openai_api_key)
+        
+        for summary in summarized_texts:
+            st.write(f"❇️ {summary}")
+            st.markdown("\n\n")
+
+if __name__ == "__main__":
+    main()
