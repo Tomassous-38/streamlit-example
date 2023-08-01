@@ -7,14 +7,9 @@ import requests
 from bs4 import BeautifulSoup
 from serpapi import GoogleSearch
 import time
-from langchain.chains.mapreduce import MapReduceChain
-from langchain.chains.summarize import load_summarize_chain
-
 
 def fetch_results(api_key, keyword, debug=False, location="Paris, Paris, Ile-de-France, France"):
-    """Fetch Google search results for a given keyword"""
-    if debug:
-        st.write("Fetching results...")
+    if debug: st.write("Fetching results...")
     params = {
         "api_key": api_key,
         "engine": "google",
@@ -26,10 +21,9 @@ def fetch_results(api_key, keyword, debug=False, location="Paris, Paris, Ile-de-
     }
     search = GoogleSearch(params)
     results = search.get_dict()
-    time.sleep(4)  # Consider async or better timing strategies if possible
+    time.sleep(4)
     urls = [item['link'] for item in results['organic_results'][:5]]
-    if debug:
-        st.write("Fetched URLs:", urls)
+    if debug: st.write("Fetched URLs:", urls)
     return urls
 
 def get_text_from_url(url, debug=False):
@@ -58,39 +52,26 @@ def summarize_text(urls, openai_api_key, debug=False):
     return summaries
 
 def custom_summary(summaries, keyword):
-    """Combine summaries into a custom summary, ensuring it does not exceed the maximum token limit"""
-    # Concatenate the summaries
     full_text = ' '.join([summary for _, summary in summaries])
-    
-    # Trim if the full_text is too long (you can adjust the length as needed)
-    max_length = 3000  # Adjust this value based on your needs
-    if len(full_text) > max_length:
-        full_text = full_text[:max_length] + "..."  # Truncate and add ellipsis
-    
     custom_prompt = f"En gardant toutes les informations sur {keyword} résume ce texte: {full_text}"
     prompt_template = PromptTemplate(template=custom_prompt)
     llm = OpenAI(engine="gpt-4", max_tokens=2000)
     response = llm.complete(prompt_template)
     return response
 
-
 def main():
-    """Main function to run the Streamlit app"""
     st.title("Google Top 5 URLs Scraper & Summarizer")
     api_key = st.text_input("SERPapi Key")
     keyword = st.text_input("Keyword")
-    openai_api_key = st.text_input("OpenAI API Key", type="password")  # Hide API key input
+    openai_api_key = st.text_input("OpenAI API Key")
     debug_mode = st.checkbox("Debug Mode")
 
     if st.button("Send") and api_key and keyword and openai_api_key:
-        try:
-            urls = fetch_results(api_key, keyword, debug=debug_mode)
-            st.write("Top 5 URLs:")
-            summaries = summarize_text(urls, openai_api_key, debug=debug_mode)
-            final_summary = custom_summary(summaries, keyword)
-            st.write(f"Final Summary: {final_summary}")
-        except Exception as e:
-            st.error(f"An error occurred: {str(e)}")  # Proper error handling
+        urls = fetch_results(api_key, keyword, debug=debug_mode)
+        st.write("Top 5 URLs:")
+        summaries = summarize_text(urls, openai_api_key, debug=debug_mode)
+        final_summary = custom_summary(summaries, keyword)
+        st.write(f"Final Summary: {final_summary}")
 
 if __name__ == "__main__":
     main()
