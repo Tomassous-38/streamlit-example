@@ -4,5 +4,4 @@ beautifulsoup4
 langchain
 tiktoken
 openai
-serpapi
 google-search-results
