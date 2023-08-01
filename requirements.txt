@@ -1,2 +1,2 @@
-streamlit
-serpapi
+streamlit==1.25.0
+google-search-results
