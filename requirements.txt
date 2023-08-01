@@ -2,4 +2,10 @@ altair
 pandas
 streamlit
 requests
-bs4
+numpy
+beautifulsoup4
+scikit-learn
+langchain
+mailgun
+tiktoken
+openai
