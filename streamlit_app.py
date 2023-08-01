@@ -5,6 +5,7 @@ from serpapi import GoogleSearch
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.chains.summarize import load_summarize_chain
 from langchain import OpenAI
+from langchain.docstore.document import Document
 import time
 
 def fetch_results(api_key, keyword, location="Paris, Paris, Ile-de-France, France"):
@@ -40,13 +41,10 @@ def summarize_text(urls, openai_api_key):
     summaries = []
     for url in urls:
         text = get_text_from_url(url)
-        documents = text_splitter.create_documents([text])
-        for doc in documents:
-            # Ensure that 'doc' is in the expected format
-            if isinstance(doc, tuple):
-                doc = {'page_content': doc[0]}
-            summarized_texts = chain_summarize.run([doc])
-            summaries.append((url, summarized_texts))
+        chunks = text_splitter.split_text(text)
+        documents = [Document(page_content=chunk) for chunk in chunks]
+        summarized_texts = chain_summarize.run(documents)
+        summaries.append((url, summarized_texts))
 
     return summaries
 
