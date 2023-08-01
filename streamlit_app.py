@@ -42,11 +42,13 @@ def summarize_text(urls, openai_api_key):
     for url in urls:
         text = get_text_from_url(url)
         chunks = text_splitter.split_text(text)
-        documents = [Document(page_content=chunk) for chunk in chunks]
-        summarized_texts = chain_summarize.run(documents)
-        summaries.append((url, summarized_texts))
+        combined_text = " ".join(chunks)
+        document = Document(page_content=combined_text)
+        summarized_texts = chain_summarize.run([document])
+        summaries.append((url, summarized_texts[0]))
 
     return summaries
+
 
 def main():
     st.title("Google Top 5 URLs Scraper & Summarizer")
