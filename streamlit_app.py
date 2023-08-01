@@ -4,6 +4,7 @@ from serpapi import GoogleSearch
 from langchain.text_splitter import TokenTextSplitter
 from langchain.chains.summarize import load_summarize_chain
 from langchain import PromptTemplate, LLMChain, OpenAI
+import time
 
 def fetch_results(api_key, keyword, location="Paris, Paris, Ile-de-France, France"):
     params = {
@@ -17,6 +18,8 @@ def fetch_results(api_key, keyword, location="Paris, Paris, Ile-de-France, Franc
     }
     search = GoogleSearch(params)
     results = search.get_dict()
+    # Wait for 4 seconds to ensure data processing
+    time.sleep(4)
     urls = [item['link'] for item in results['organic_results'][:5]]
     return urls
 
