@@ -37,7 +37,7 @@ def get_text_from_url(url, debug=False):
         return None
 
 def summarize_text(urls, openai_api_key, debug=False):
-    llm = OpenAI(openai_api_key=openai_api_key, temperature=0)
+    llm = OpenAI(openai_api_key, temperature=0)
     chain = load_summarize_chain(llm, chain_type="map_reduce")
     summaries = []
     for url in urls:
@@ -53,7 +53,7 @@ def summarize_text(urls, openai_api_key, debug=False):
 def custom_summary(summaries, keyword, openai_api_key):
     full_text = ' '.join([summary for _, summary in summaries])
     custom_prompt = f"En gardant toutes les informations sur {keyword}, résume ce texte: {full_text}"
-    llm = OpenAI(api_key=openai_api_key, engine="gpt-4", temperature=0.5, max_tokens=200)
+    llm = OpenAI(openai_api_key, engine="gpt-4", temperature=0.5, max_tokens=200)
     response = llm.complete(custom_prompt)
     return response.choices[0].text
 
