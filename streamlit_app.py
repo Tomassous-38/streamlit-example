@@ -41,13 +41,21 @@ def summarize_text(urls, openai_api_key):
     summaries = []
     for url in urls:
         text = get_text_from_url(url)
-        chunks = text_splitter.split_text(text)
-        combined_text = " ".join(chunks)
-        document = Document(page_content=combined_text)
-        summarized_texts = chain_summarize.run([document])
-        summaries.append((url, summarized_texts[0]))
+        documents = text_splitter.create_documents([text])
+        summarized_texts = []
+        for doc in documents:
+            # Ensure that 'doc' is in the expected format
+            if isinstance(doc, tuple):
+                doc = {'page_content': doc[0]}
+            summary_chunk = chain_summarize.run([doc])[0]
+            summarized_texts.append(summary_chunk)
+
+        # Combine the summarized chunks into a single summary
+        final_summary = " ".join(summarized_texts)
+        summaries.append((url, final_summary))
 
     return summaries
+
 
 
 def main():
