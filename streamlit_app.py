@@ -20,6 +20,7 @@ def fetch_results(api_key, keyword, location="Paris, Paris, Ile-de-France, Franc
     results = search.get_dict()
     # Wait for 4 seconds to ensure data processing
     time.sleep(4)
+    print(results) # Prints the entire JSON response
     urls = [item['link'] for item in results['organic_results'][:5]]
     return urls
 
