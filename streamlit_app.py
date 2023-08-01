@@ -1,9 +1,11 @@
 import streamlit as st
-from serpapi import GoogleSearch
 import requests
+from langchain.text_splitter import TokenTextSplitter
+from langchain.chains.summarize import load_summarize_chain
+from langchain import PromptTemplate, LLMChain, OpenAI
 from bs4 import BeautifulSoup
 
-def fetch_results(api_key, keyword, engine="google", location="Paris, Ile-de-France, France"):
+def fetch_results(api_key, keyword, location="Paris, Ile-de-France, France"):
     params = {
         "api_key": api_key,
         "q": keyword,
@@ -12,38 +14,44 @@ def fetch_results(api_key, keyword, engine="google", location="Paris, Ile-de-Fra
         "google_domain": "google.fr",
         "location": location,
     }
-
-    search = GoogleSearch(params)
-    results = search.get_dict()
+    
+    response = requests.get("https://serpapi.com/search", params)
+    results = response.json()
     urls = [item['link'] for item in results['organic_results'][:5]]
+    return urls
 
-    contents = []
+def get_text_from_url(url):
+    response = requests.get(url)
+    soup = BeautifulSoup(response.text, 'html.parser')
+    return soup.get_text()
+
+def summarize_text(urls, openai_api_key):
+    text_splitter = TokenTextSplitter(chunk_size=3000, chunk_overlap=200)
+    llm = OpenAI(openai_api_key=openai_api_key, temperature=0.8)
+    chain_summarize = load_summarize_chain(llm, chain_type="map_reduce")
+
+    summaries = []
     for url in urls:
-        try:
-            response = requests.get(url)
-            if response.status_code == 403:
-                contents.append("403 Forbidden: Access denied.")
-            else:
-                soup = BeautifulSoup(response.text, 'html.parser')
-                content = soup.get_text()
-                if content:
-                    contents.append(content)
-                else:
-                    contents.append("Failed to fetch content.")
-        except Exception as e:
-            contents.append(f"An error occurred: {str(e)}")
+        text = get_text_from_url(url)
+        splitted_texts = text_splitter.split_text(text)
+        summarized_text = chain_summarize.run(splitted_texts)
+        summaries.append((url, summarized_text))
 
-    return urls, contents
+    return summaries
 
-st.title("Google Top 5 URLs Scraper")
-st.write("Please enter your SERPapi key and the keyword.")
+def main():
+    st.title("Google Top 5 URLs Scraper & Summarizer")
+    api_key = st.text_input("SERPapi Key")
+    keyword = st.text_input("Keyword")
+    openai_api_key = st.text_input("OpenAI API Key")
 
-api_key = st.text_input("SERPapi Key")
-keyword = st.text_input("Keyword")
+    if api_key and keyword and openai_api_key:
+        urls = fetch_results(api_key, keyword)
+        st.write("Top 5 URLs:")
+        summaries = summarize_text(urls, openai_api_key)
+        for url, summary in summaries:
+            st.write(f"URL: {url}")
+            st.write(f"Summary: {summary}")
 
-if api_key and keyword:
-    urls, contents = fetch_results(api_key, keyword)
-    st.write("Top 5 URLs:")
-    for url, content in zip(urls, contents):
-        st.write(url)
-        st.text_area("Content:", value=content, height=200)
+if __name__ == "__main__":
+    main()
