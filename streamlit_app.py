@@ -6,7 +6,7 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.chains.summarize import load_summarize_chain
 from langchain import OpenAI
 import time
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 def fetch_results(api_key, keyword, debug=False, location="Paris, Paris, Ile-de-France, France"):
     if debug: st.write("Fetching results...")
@@ -53,7 +53,7 @@ def summarize_url(url, openai_api_key, debug=False):
 def summarize_text(urls, openai_api_key, debug=False):
     with ThreadPoolExecutor() as executor:
         future_summaries = {executor.submit(summarize_url, url, openai_api_key, debug): url for url in urls}
-        summaries = [future.result() for future in concurrent.futures.as_completed(future_summaries)]
+        summaries = [future.result() for future in as_completed(future_summaries)]
     if debug: st.write("Summaries created.")
     return summaries
 
