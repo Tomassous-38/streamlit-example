@@ -1,4 +1,5 @@
 import streamlit as st
+import requests
 from bs4 import BeautifulSoup
 from serpapi import GoogleSearch
 from langchain.text_splitter import TokenTextSplitter
