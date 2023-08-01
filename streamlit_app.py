@@ -33,11 +33,14 @@ def fetch_results(api_key, keyword, debug=False, location="Paris, Paris, Ile-de-
     return urls
 
 def get_text_from_url(url, debug=False):
-    """Retrieve the full text content from a URL"""
-    response = requests.get(url)
-    response.raise_for_status()  # Raise an error for failed requests
-    soup = BeautifulSoup(response.text, 'html.parser')
-    return soup.get_text()
+    try:
+        response = requests.get(url)
+        soup = BeautifulSoup(response.text, 'html.parser')
+        return soup.get_text()
+    except Exception as e:
+        if debug:
+            print(f"An error occurred while scraping {url}: {e}")
+        return None
 
 def summarize_text(urls, openai_api_key, debug=False):
     llm = OpenAI(openai_api_key=openai_api_key, temperature=0)
@@ -45,6 +48,8 @@ def summarize_text(urls, openai_api_key, debug=False):
     summaries = []
     for url in urls:
         text = get_text_from_url(url, debug=debug)
+        if text is None:
+            continue  # If an error occurred, ignore this URL and continue with the next one
         text_splitter = CharacterTextSplitter()
         texts = text_splitter.split_text(text)
         docs = [Document(page_content=t) for t in texts]
