@@ -1,5 +1,5 @@
 import streamlit as st
-from google_search_results import GoogleSearch
+from serpapi import GoogleSearch
 import requests
 from bs4 import BeautifulSoup
 
