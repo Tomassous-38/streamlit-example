@@ -5,3 +5,4 @@ langchain
 tiktoken
 openai
 serpapi
+google-search-results
