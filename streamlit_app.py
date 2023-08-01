@@ -5,10 +5,10 @@ from serpapi import GoogleSearch
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.chains.summarize import load_summarize_chain
 from langchain import OpenAI
-from langchain.docstore.document import Document
 import time
 
-def fetch_results(api_key, keyword, location="Paris, Paris, Ile-de-France, France"):
+def fetch_results(api_key, keyword, debug=False, location="Paris, Paris, Ile-de-France, France"):
+    if debug: st.write("Fetching results...")
     params = {
         "api_key": api_key,
         "engine": "google",
@@ -20,17 +20,18 @@ def fetch_results(api_key, keyword, location="Paris, Paris, Ile-de-France, Franc
     }
     search = GoogleSearch(params)
     results = search.get_dict()
-    # Wait for 4 seconds to ensure data processing
     time.sleep(4)
     urls = [item['link'] for item in results['organic_results'][:5]]
+    if debug: st.write("Fetched URLs:", urls)
     return urls
 
-def get_text_from_url(url):
+def get_text_from_url(url, debug=False):
+    if debug: st.write(f"Getting text from URL: {url}")
     response = requests.get(url)
     soup = BeautifulSoup(response.text, 'html.parser')
     return soup.get_text()
 
-def summarize_text(urls, openai_api_key):
+def summarize_text(urls, openai_api_key, debug=False):
     text_splitter = RecursiveCharacterTextSplitter(
         chunk_size=3000,
         chunk_overlap=200
@@ -40,38 +41,32 @@ def summarize_text(urls, openai_api_key):
 
     summaries = []
     for url in urls:
-        text = get_text_from_url(url)
+        if debug: st.write(f"Processing URL: {url}")
+        text = get_text_from_url(url, debug=debug)
         documents = text_splitter.create_documents([text])
-        summarized_texts = []
         for doc in documents:
-            # Ensure that 'doc' is in the expected format
             if isinstance(doc, tuple):
                 doc = {'page_content': doc[0]}
-            summary_chunk = chain_summarize.run([doc])[0]
-            summarized_texts.append(summary_chunk)
+            summarized_texts = chain_summarize.run([doc])
+            summaries.append((url, summarized_texts))
 
-        # Combine the summarized chunks into a single summary
-        final_summary = " ".join(summarized_texts)
-        summaries.append((url, final_summary))
-
+    if debug: st.write("Summaries created.")
     return summaries
-
-
 
 def main():
     st.title("Google Top 5 URLs Scraper & Summarizer")
     api_key = st.text_input("SERPapi Key")
     keyword = st.text_input("Keyword")
     openai_api_key = st.text_input("OpenAI API Key")
+    debug_mode = st.checkbox("Debug Mode")
 
     if st.button("Send") and api_key and keyword and openai_api_key:
-        urls = fetch_results(api_key, keyword)
+        urls = fetch_results(api_key, keyword, debug=debug_mode)
         st.write("Top 5 URLs:")
-        summaries = summarize_text(urls, openai_api_key)
+        summaries = summarize_text(urls, openai_api_key, debug=debug_mode)
         for url, summary in summaries:
             st.write(f"URL: {url}")
-            for summarized_text in summary:
-                st.write(f"Summary: {summarized_text}")
+            st.write(f"Summary: {summary}")
 
 if __name__ == "__main__":
     main()
