@@ -1,28 +1,23 @@
 import streamlit as st
+from bs4 import BeautifulSoup
+from serpapi import GoogleSearch
 from langchain.text_splitter import TokenTextSplitter
 from langchain.chains.summarize import load_summarize_chain
 from langchain import PromptTemplate, LLMChain, OpenAI
-from bs4 import BeautifulSoup
-import requests
-from serpapi import GoogleSearch
 
-def fetch_results(api_key, keyword, location="Paris, Ile-de-France, France"):
+def fetch_results(api_key, keyword, location="Paris, Paris, Ile-de-France, France"):
     params = {
         "api_key": api_key,
+        "engine": "google",
         "q": keyword,
-        "hl": "fr",
-        "gl": "fr",
-        "google_domain": "google.fr",
         "location": location,
+        "google_domain": "google.fr",
+        "gl": "fr",
+        "hl": "fr"
     }
-
     search = GoogleSearch(params)
     results = search.get_dict()
-    if 'organic_results' in results:
-        urls = [item['link'] for item in results['organic_results'][:5]]
-    else:
-        st.warning("No results found. Please check the parameters.")
-        urls = []
+    urls = [item['link'] for item in results['organic_results'][:5]]
     return urls
 
 def get_text_from_url(url):
@@ -50,7 +45,7 @@ def main():
     keyword = st.text_input("Keyword")
     openai_api_key = st.text_input("OpenAI API Key")
 
-    if st.button("Fetch and Summarize"):
+    if st.button("Send") and api_key and keyword and openai_api_key:
         urls = fetch_results(api_key, keyword)
         st.write("Top 5 URLs:")
         summaries = summarize_text(urls, openai_api_key)
