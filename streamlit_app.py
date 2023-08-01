@@ -8,8 +8,7 @@ from langchain import OpenAI
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-def fetch_results(api_key, keyword, debug=False, location="Paris, Paris, Ile-de-France, France"):
-    if debug: st.write("Fetching results...")
+def fetch_results(api_key, keyword, location="Paris, Paris, Ile-de-France, France"):
     params = {
         "api_key": api_key,
         "engine": "google",
@@ -22,19 +21,15 @@ def fetch_results(api_key, keyword, debug=False, location="Paris, Paris, Ile-de-
     search = GoogleSearch(params)
     results = search.get_dict()
     time.sleep(4)
-    urls = [item['link'] for item in results['organic_results'][:5]]
-    if debug: st.write("Fetched URLs:", urls)
-    return urls
+    return [item['link'] for item in results['organic_results'][:5]]
 
-def get_text_from_url(url, debug=False):
-    if debug: st.write(f"Getting text from URL: {url}")
+def get_text_from_url(url):
     response = requests.get(url)
     soup = BeautifulSoup(response.text, 'html.parser')
     return soup.get_text()
 
-def summarize_url(url, openai_api_key, debug=False):
-    if debug: st.write(f"Processing URL: {url}")
-    text = get_text_from_url(url, debug=debug)
+def summarize_url_no_st(url, openai_api_key):
+    text = get_text_from_url(url)
     text_splitter = RecursiveCharacterTextSplitter(
         chunk_size=3000,
         chunk_overlap=200
@@ -51,9 +46,15 @@ def summarize_url(url, openai_api_key, debug=False):
     return url, summaries
 
 def summarize_text(urls, openai_api_key, debug=False):
+    summaries = []
     with ThreadPoolExecutor() as executor:
-        future_summaries = {executor.submit(summarize_url, url, openai_api_key, debug): url for url in urls}
-        summaries = [future.result() for future in as_completed(future_summaries)]
+        future_summaries = {executor.submit(summarize_url_no_st, url, openai_api_key): url for url in urls}
+        for future in as_completed(future_summaries):
+            url, summary = future.result()
+            summaries.append((url, summary))
+            if debug:
+                st.write(f"Processed URL: {url}")
+
     if debug: st.write("Summaries created.")
     return summaries
 
@@ -65,8 +66,8 @@ def main():
     debug_mode = st.checkbox("Debug Mode")
 
     if st.button("Send") and api_key and keyword and openai_api_key:
-        urls = fetch_results(api_key, keyword, debug=debug_mode)
-        st.write("Top 5 URLs:")
+        urls = fetch_results(api_key, keyword)
+        st.write("Top 5 URLs:", urls)
         summaries = summarize_text(urls, openai_api_key, debug=debug_mode)
         for url, summary in summaries:
             st.write(f"URL: {url}")
