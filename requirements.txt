@@ -3,7 +3,6 @@ requests
 beautifulsoup4
 langchain
 tiktoken
-google-search-results
 serpapi
 time
 openai
