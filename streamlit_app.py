@@ -1,27 +1,27 @@
 import streamlit as st
-import requests
 from langchain.text_splitter import TokenTextSplitter
 from langchain.chains.summarize import load_summarize_chain
 from langchain import PromptTemplate, LLMChain, OpenAI
 from bs4 import BeautifulSoup
+import requests
+from google_search_results import GoogleSearch
 
 def fetch_results(api_key, keyword, location="Paris, Ile-de-France, France"):
     params = {
         "api_key": api_key,
         "q": keyword,
-        "hl": "fr",  # Language French
-        "gl": "fr",  # Country France
+        "hl": "fr",
+        "gl": "fr",
         "google_domain": "google.fr",
         "location": location,
-        "engine": "google"  # Required, set to "google" to use the Google API engine
     }
 
-    response = requests.get("https://serpapi.com/search", params)
-    results = response.json()
+    search = GoogleSearch(params)
+    results = search.get_dict()
     if 'organic_results' in results:
         urls = [item['link'] for item in results['organic_results'][:5]]
     else:
-        print("No results found.")
+        st.warning("No results found. Please check the parameters.")
         urls = []
     return urls
 
@@ -50,21 +50,13 @@ def main():
     keyword = st.text_input("Keyword")
     openai_api_key = st.text_input("OpenAI API Key")
 
-    if st.button("Fetch & Summarize"):
-        if api_key and keyword and openai_api_key:
-            urls = fetch_results(api_key, keyword)
-            if urls:
-                st.write("Top 5 URLs:")
-                summaries = summarize_text(urls, openai_api_key)
-                for url, summary in summaries:
-                    st.write(f"URL: {url}")
-                    st.write(f"Summary: {summary}")
-            else:
-                st.error("No results found. Please check the parameters.")
-        else:
-            st.error("Please provide all required information.")
-
-    st.button("Retry")
+    if st.button("Fetch and Summarize"):
+        urls = fetch_results(api_key, keyword)
+        st.write("Top 5 URLs:")
+        summaries = summarize_text(urls, openai_api_key)
+        for url, summary in summaries:
+            st.write(f"URL: {url}")
+            st.write(f"Summary: {summary}")
 
 if __name__ == "__main__":
     main()
