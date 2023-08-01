@@ -7,6 +7,9 @@ import requests
 from bs4 import BeautifulSoup
 from serpapi import GoogleSearch
 import time
+from langchain.chains.mapreduce import MapReduceChain
+from langchain.chains.summarize import load_summarize_chain
+
 
 def fetch_results(api_key, keyword, debug=False, location="Paris, Paris, Ile-de-France, France"):
     """Fetch Google search results for a given keyword"""
@@ -37,9 +40,8 @@ def get_text_from_url(url, debug=False):
     return soup.get_text()
 
 def summarize_text(urls, openai_api_key, debug=False):
-    """Summarize the text from a list of URLs using LangChain"""
     llm = OpenAI(openai_api_key=openai_api_key, temperature=0)
-    chain = load_summarize_chain(llm, chain_type="stuff")
+    chain = load_summarize_chain(llm, chain_type="map_reduce")  # Using map_reduce chain
     summaries = []
     for url in urls:
         text = get_text_from_url(url, debug=debug)
