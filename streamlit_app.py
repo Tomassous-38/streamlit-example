@@ -37,7 +37,7 @@ def get_text_from_url(url, debug=False):
         return None
 
 def summarize_text(urls, openai_api_key, debug=False):
-    llm = OpenAI(temperature=0)
+    llm = OpenAI(openai_api_key=openai_api_key, temperature=0)
     chain = load_summarize_chain(llm, chain_type="map_reduce")
     summaries = []
     for url in urls:
