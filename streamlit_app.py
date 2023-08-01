@@ -40,9 +40,13 @@ def summarize_text(urls, openai_api_key):
     summaries = []
     for url in urls:
         text = get_text_from_url(url)
-        documents = text_splitter.create_documents([text]) # Create documents with the page_content attribute
-        summarized_texts = [chain_summarize.run(doc) for doc in documents]
-        summaries.append((url, summarized_texts))
+        documents = text_splitter.create_documents([text])
+        for doc in documents:
+            # Ensure that 'doc' is in the expected format
+            if isinstance(doc, tuple):
+                doc = {'page_content': doc[0]}
+            summarized_texts = chain_summarize.run([doc])
+            summaries.append((url, summarized_texts))
 
     return summaries
 
