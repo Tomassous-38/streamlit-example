@@ -48,7 +48,7 @@ def custom_summary(summaries, keyword):
     full_text = ' '.join([summary for _, summary in summaries])
     custom_prompt = f"En gardant toutes les informations sur {keyword} résume ce texte: {full_text}"
     prompt_template = PromptTemplate(template=custom_prompt)
-    llm = OpenAI(engine="gpt-4", max_tokens=4000)
+    llm = OpenAI(engine="gpt-4", max_tokens=2000)
     response = llm.complete(prompt_template)
     return response
 
