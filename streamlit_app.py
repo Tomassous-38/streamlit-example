@@ -1,6 +1,6 @@
-from langchain import OpenAI, PromptTemplate, LLMChain
+from langchain import OpenAI, LLMChain
 from langchain.text_splitter import CharacterTextSplitter
-from langchain.chains.summarize import load_summarize_chain
+from langchain.chains.mapreduce import MapReduceChain
 from langchain.docstore.document import Document
 import streamlit as st
 import requests
@@ -31,33 +31,30 @@ def get_text_from_url(url, debug=False):
         response = requests.get(url)
         soup = BeautifulSoup(response.text, 'html.parser')
         return soup.get_text()
-    except Exception as e:
-        if debug:
-            print(f"An error occurred while scraping {url}: {e}")
+    except:
+        if debug: st.write(f"Failed to scrape {url}")
         return None
 
 def summarize_text(urls, openai_api_key, debug=False):
     llm = OpenAI(openai_api_key=openai_api_key, temperature=0)
-    chain = load_summarize_chain(llm, chain_type="map_reduce")  # Using map_reduce chain
+    chain = MapReduceChain(llm)
     summaries = []
     for url in urls:
         text = get_text_from_url(url, debug=debug)
-        if text is None:
-            continue  # If an error occurred, ignore this URL and continue with the next one
-        text_splitter = CharacterTextSplitter()
-        texts = text_splitter.split_text(text)
-        docs = [Document(page_content=t) for t in texts]
-        summary = chain.run(docs)
-        summaries.append((url, summary))
+        if text is not None:
+            text_splitter = CharacterTextSplitter()
+            texts = text_splitter.split_text(text)
+            docs = [Document(page_content=t) for t in texts]
+            summary = chain.run(docs)
+            summaries.append((url, summary))
     return summaries
 
-def custom_summary(summaries, keyword):
+def custom_summary(summaries, keyword, openai_api_key):
     full_text = ' '.join([summary for _, summary in summaries])
-    custom_prompt = f"En gardant toutes les informations sur {keyword} résume ce texte: {full_text}"
-    prompt_template = PromptTemplate(template=custom_prompt)
-    llm = OpenAI(engine="gpt-4", max_tokens=2000)
-    response = llm.complete(prompt_template)
-    return response
+    custom_prompt = f"En gardant toutes les informations sur {keyword}, résume ce texte: {full_text}"
+    llm = OpenAI(api_key=openai_api_key, engine="gpt-4", temperature=0.5, max_tokens=200)
+    response = llm.complete(custom_prompt)
+    return response.choices[0].text
 
 def main():
     st.title("Google Top 5 URLs Scraper & Summarizer")
@@ -70,7 +67,7 @@ def main():
         urls = fetch_results(api_key, keyword, debug=debug_mode)
         st.write("Top 5 URLs:")
         summaries = summarize_text(urls, openai_api_key, debug=debug_mode)
-        final_summary = custom_summary(summaries, keyword)
+        final_summary = custom_summary(summaries, keyword, openai_api_key)
         st.write(f"Final Summary: {final_summary}")
 
 if __name__ == "__main__":
