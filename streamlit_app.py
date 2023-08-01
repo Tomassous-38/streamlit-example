@@ -2,9 +2,9 @@ import streamlit as st
 import requests
 from bs4 import BeautifulSoup
 from serpapi import GoogleSearch
-from langchain.text_splitter import TokenTextSplitter
+from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.chains.summarize import load_summarize_chain
-from langchain import PromptTemplate, LLMChain, OpenAI
+from langchain import OpenAI
 import time
 
 def fetch_results(api_key, keyword, location="Paris, Paris, Ile-de-France, France"):
@@ -21,7 +21,6 @@ def fetch_results(api_key, keyword, location="Paris, Paris, Ile-de-France, Franc
     results = search.get_dict()
     # Wait for 4 seconds to ensure data processing
     time.sleep(4)
-    print(results) # Prints the entire JSON response
     urls = [item['link'] for item in results['organic_results'][:5]]
     return urls
 
@@ -31,16 +30,19 @@ def get_text_from_url(url):
     return soup.get_text()
 
 def summarize_text(urls, openai_api_key):
-    text_splitter = TokenTextSplitter(chunk_size=3000, chunk_overlap=200)
+    text_splitter = RecursiveCharacterTextSplitter(
+        chunk_size=3000,
+        chunk_overlap=200
+    )
     llm = OpenAI(openai_api_key=openai_api_key, temperature=0.8)
     chain_summarize = load_summarize_chain(llm, chain_type="map_reduce")
 
     summaries = []
     for url in urls:
         text = get_text_from_url(url)
-        splitted_texts = text_splitter.split_text(text)
-        summarized_text = chain_summarize.run(splitted_texts)
-        summaries.append((url, summarized_text))
+        documents = text_splitter.create_documents([text]) # Create documents with the page_content attribute
+        summarized_texts = [chain_summarize.run(doc) for doc in documents]
+        summaries.append((url, summarized_texts))
 
     return summaries
 
@@ -56,7 +58,8 @@ def main():
         summaries = summarize_text(urls, openai_api_key)
         for url, summary in summaries:
             st.write(f"URL: {url}")
-            st.write(f"Summary: {summary}")
+            for summarized_text in summary:
+                st.write(f"Summary: {summarized_text}")
 
 if __name__ == "__main__":
     main()
