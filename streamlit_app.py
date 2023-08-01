@@ -51,13 +51,21 @@ def summarize_text(urls, openai_api_key, debug=False):
     return summaries
 
 def custom_summary(summaries, keyword):
-    """Combine summaries into a custom summary"""
+    """Combine summaries into a custom summary, ensuring it does not exceed the maximum token limit"""
+    # Concatenate the summaries
     full_text = ' '.join([summary for _, summary in summaries])
+    
+    # Trim if the full_text is too long (you can adjust the length as needed)
+    max_length = 3000  # Adjust this value based on your needs
+    if len(full_text) > max_length:
+        full_text = full_text[:max_length] + "..."  # Truncate and add ellipsis
+    
     custom_prompt = f"En gardant toutes les informations sur {keyword} résume ce texte: {full_text}"
     prompt_template = PromptTemplate(template=custom_prompt)
     llm = OpenAI(engine="gpt-4", max_tokens=2000)
     response = llm.complete(prompt_template)
     return response
+
 
 def main():
     """Main function to run the Streamlit app"""
