@@ -1,11 +1,2 @@
-altair
-pandas
 streamlit
-requests
-numpy
-beautifulsoup4
-scikit-learn
-langchain
-mailgun
-tiktoken
-openai
+serpapi
