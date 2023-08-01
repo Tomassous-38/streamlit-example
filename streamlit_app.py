@@ -50,6 +50,7 @@ def main():
     openai_api_key = st.text_input("OpenAI API Key")
 
     if st.button("Send") and api_key and keyword and openai_api_key:
+        st.json(results) # Displays the entire JSON response in the Streamlit app
         urls = fetch_results(api_key, keyword)
         st.write("Top 5 URLs:")
         summaries = summarize_text(urls, openai_api_key)
